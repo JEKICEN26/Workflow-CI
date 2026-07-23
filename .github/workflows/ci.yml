@@ -65,7 +65,7 @@ jobs:
       run: |
         RUN_ID=$(cat run_id.txt)
         echo "Building Docker image for Run ID: $RUN_ID"
-        mlflow models build-docker -m "mlruns/0/$RUN_ID/artifacts/model" -n ${{ env.DOCKER_IMAGE }}:latest
+        mlflow models build-docker -m "runs:/$RUN_ID/model" -n ${{ env.DOCKER_IMAGE }}:latest
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
