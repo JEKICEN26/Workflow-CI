@@ -38,12 +38,7 @@ jobs:
     - name: Run mlflow project
       working-directory: MLProject
       run: |
-        python modelling.py \
-          --n_estimators 100 \
-          --max_depth 10 \
-          --min_samples_split 2 \
-          --min_samples_leaf 1 \
-          --test_size 0.2
+        mlflow run . --env-manager=local
 
     - name: Get latest MLflow run_id
       working-directory: MLProject
