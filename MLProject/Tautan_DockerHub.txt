@@ -1,0 +1,5 @@
+Tautan Docker Hub: https://hub.docker.com/r/kykyzaky/california-housing-model
+
+Catatan:
+- Ganti YOUR_DOCKERHUB_USERNAME dengan username Docker Hub Anda.
+- Image akan otomatis di-push oleh GitHub Actions CI workflow menggunakan mlflow build-docker.
