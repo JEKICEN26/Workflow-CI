@@ -13,24 +13,29 @@ env:
   DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/california-housing-model
 
 jobs:
-  train-model:
+  build:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - name: Run actions/checkout@v3
+      uses: actions/checkout@v3
 
-    - name: Set up Python
+    - name: Set up Python 3.12.7
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.12.7'
+
+    - name: Check Env
+      run: |
+        python --version
+        pip --version
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pandas numpy scikit-learn mlflow matplotlib
 
-    - name: Train model
+    - name: Run mlflow project
       working-directory: MLProject
       run: |
         python modelling.py \
@@ -40,55 +45,39 @@ jobs:
           --min_samples_leaf 1 \
           --test_size 0.2
 
-    - name: Upload model artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: model-artifacts
-        path: |
-          MLProject/mlruns/
-          MLProject/run_id.txt
-        retention-days: 30
+    - name: Get latest MLflow run_id
+      working-directory: MLProject
+      run: |
+        RUN_ID=$(cat run_id.txt)
+        echo "Latest Run ID: $RUN_ID"
 
-  build-docker:
-    needs: train-model
-    runs-on: ubuntu-latest
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - name: Install Python dependencies
+      run: |
+        echo "Checking if MLFlow is installed or other Python dependencies"
+        pip show mlflow || pip install mlflow
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+    - name: Upload to Google Drive
+      run: |
+        echo "Upload to Google Drive step - currently placeholder as no script/credentials provided."
 
-    - name: Install MLflow
-      run: pip install mlflow
-
-    - name: Download model artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: model-artifacts
-        path: MLProject/
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Build and Push Docker Image using mlflow
+    - name: Build Docker Model
       working-directory: MLProject
       run: |
         RUN_ID=$(cat run_id.txt)
         echo "Building Docker image for Run ID: $RUN_ID"
         mlflow models build-docker -m "mlruns/0/$RUN_ID/artifacts/model" -n ${{ env.DOCKER_IMAGE }}:latest
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Tag Docker Image
+      run: |
         docker tag ${{ env.DOCKER_IMAGE }}:latest ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+
+    - name: Push Docker Image
+      run: |
         docker push ${{ env.DOCKER_IMAGE }}:latest
         docker push ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
-
-    - name: Output image info
-      run: |
-        echo "Docker image pushed successfully!"
-        echo "Image: ${{ env.DOCKER_IMAGE }}:latest"
